@@ -1,0 +1,15 @@
+{
+    "id": "f36c9423-c624-49f7-a077-318ade5dc13b",
+    "version": "0.0.1",
+    "requiredApiVersion": "^1.4.0",
+    "iconFile": "icon.png",
+    "author": {
+        "name": "Felix Heilmeyer",
+        "homepage": "https://github.com/heilerich/Rocket.Chat.App-Slackline",
+        "support": "https://github.com/heilerich/Rocket.Chat.App-Slackline/issues"
+    },
+    "name": "Slackline",
+    "nameSlug": "slackline",
+    "classFile": "SlacklineApp.ts",
+    "description": "Enable users to import and receive private messages from a Slack instance"
+}
