@@ -1,5 +1,6 @@
 import {HttpStatusCode, IHttp, IModify, IPersistence, IRead} from '@rocket.chat/apps-engine/definition/accessors';
 import {IApiEndpointInfo, IApiRequest, IApiResponse} from '@rocket.chat/apps-engine/definition/api';
+import {IRoom, RoomType} from '@rocket.chat/apps-engine/definition/rooms';
 import {IUser} from '@rocket.chat/apps-engine/definition/users';
 import {CustomEndpoint} from '../helpers/CustomEndpoint';
 import {SlackAPIClient} from '../helpers/SlackAPIClient';
@@ -116,9 +117,26 @@ export class SlackEventEndpoint extends CustomEndpoint {
                 const sender = await this.getUserForSlackId(event.user, storage, slackApi);
                 if (!sender) { await this.app.getLogger().error(`Ignoring message. Could not map ${event.user} to local user`); return; }
                 if (!sourceChannel.name) { await this.app.getLogger().error(`Ignoring message. ${JSON.stringify(sourceChannel)} has no name.`); return; }
-                const destinationChannel = await read.getRoomReader().getByName(sourceChannel.name);
-                if (!destinationChannel) { await this.app.getLogger().error(`Ignoring message. Could not map ${sourceChannel.name} to local channel`); return; }
-
+                let destinationChannel = await read.getRoomReader().getByName(sourceChannel.name);
+                // if (!destinationChannel) { await this.app.getLogger().error(`Ignoring message.
+                // Could not map ${sourceChannel.name} to local channel`); return; }
+                if (!destinationChannel) {
+                    const slackMembers = await slackApi.channelMembers(sourceChannel.channelId);
+                    const localMembers = (await Promise.all(slackMembers.map(async (memberId) => {
+                        return await this.getUserForSlackId(memberId.userId, storage, slackApi);
+                    }))).filter((member) => member !== undefined);
+                    if (!sourceChannel.creator) { await this.app.getLogger().error(`Ignoring message. Channels has no creator. ${sourceChannel}`); return; }
+                    const creator = await this.getUserForSlackId(sourceChannel.creator, storage, slackApi);
+                    if (!creator) { await this.app.getLogger().error(`Ignoring message. Could not creator ${sourceChannel.creator} to local user`); return; }
+                    if (!sourceChannel.normalized_name) {
+                        await this.app.getLogger().error(`Ignoring message. ${JSON.stringify(sourceChannel)} has no normalized_name.`); return;
+                    }
+                    const roomBuilder = await modify.getCreator().startRoom().setSlugifiedName(sourceChannel.normalized_name).setType(RoomType.PRIVATE_GROUP)
+                        .setCreator(creator).setDisplayName(sourceChannel.name);
+                    await Promise.all((localMembers as Array<IUser>).map(async (member) => await roomBuilder.addMemberToBeAddedByUsername(member.username)));
+                    const roomId = await modify.getCreator().finish(roomBuilder);
+                    destinationChannel = await read.getRoomReader().getById(roomId) as IRoom;
+                }
                 const message = modify.getCreator().startMessage().setSender(sender).setUsernameAlias(`${sender.username} (slack)`)
                     .setRoom(destinationChannel).setText(event.text);
                 await modify.getCreator().finish(message);

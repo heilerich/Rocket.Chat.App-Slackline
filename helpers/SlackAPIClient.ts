@@ -67,6 +67,8 @@ export class SlackAPIClient {
                 is_mpim: channel.is_mpim,
                 otherUser: channel.user,
                 name: channel.name,
+                creator: channel.creator,
+                normalized_name: channel.name_normalized,
             };
         });
 
@@ -194,6 +196,8 @@ export interface ISlackChannel {
     otherUser?: string;
     userInfo?: Array<ISlackUserInfo> | ISlackUserInfo;
     name?: string;
+    creator?: string;
+    normalized_name?: string;
 
     is_im: boolean;
     is_channel: boolean;
