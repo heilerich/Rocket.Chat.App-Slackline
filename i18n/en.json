@@ -1,0 +1,8 @@
+{
+    "slackline_command_description": "Import and receive private channel and direct messages from Slack",
+    "slackline_command_params": "(login|import|enable|disable)",
+    "slack_api_key": "Slack App API Client ID",
+    "slack_api_secret": "Slack App API Client Secret",
+    "slack_api_key_description": "The Client ID of your Slack App. See README.md of this project for details on how to get one",
+    "slack_api_secret_description": "The Client Secret of your Slack App. See README.md of this project for details on how to get one"
+}

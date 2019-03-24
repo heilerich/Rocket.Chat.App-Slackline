@@ -1,7 +1,7 @@
 import {ApiEndpoint, ApiSecurity, ApiVisibility, IApi, IApiEndpoint} from '@rocket.chat/apps-engine/definition/api';
-import {IApp} from '@rocket.chat/apps-engine/definition/IApp';
 import {OauthEndpoint} from './endpoints/oauth';
 import {SlackEventEndpoint} from './endpoints/slackevent';
+import {SlacklineApp} from './SlacklineApp';
 
 export class SlacklineAPI implements IApi {
     public security: ApiSecurity = ApiSecurity.UNSECURE;
@@ -9,7 +9,7 @@ export class SlacklineAPI implements IApi {
 
     public endpoints: Array<ApiEndpoint | IApiEndpoint>;
 
-    constructor(public app: IApp) {
+    constructor(public app: SlacklineApp) {
         this.endpoints = [
             new SlackEventEndpoint(app),
             new OauthEndpoint(app),

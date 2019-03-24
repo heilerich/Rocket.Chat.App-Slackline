@@ -1,32 +1,24 @@
 import {IHttp, IModify, IPersistence, IRead} from '@rocket.chat/apps-engine/definition/accessors';
 import {IApiEndpointInfo, IApiRequest, IApiResponse} from '@rocket.chat/apps-engine/definition/api';
-import {IApp} from '@rocket.chat/apps-engine/definition/IApp';
 import {CustomEndpoint} from '../helpers/CustomEndpoint';
 import {SlackAPIClient} from '../helpers/SlackAPIClient';
+import {SlacklineApp} from '../SlacklineApp';
 
 export class OauthEndpoint extends CustomEndpoint {
-    constructor(public app: IApp) {
+    constructor(public app: SlacklineApp) {
         super(app);
         this.path = 'oauth';
     }
 
-    public async post(request: IApiRequest, endpoint: IApiEndpointInfo, read: IRead, modify: IModify, http: IHttp,
-                      persis: IPersistence): Promise<IApiResponse> {
-        // this.app.getLogger().debug(`Received Request ${JSON.stringify(request)}`);
-        const user = await new SlackAPIClient(http, this.app.getLogger(),
-            'xoxp-68846292321-280122104279-585825589940-e7a3b0608e3d0c21faa8fa833ffbc690')
-            .fullChannelHistory('D871C0WHG');
-        return this.success(JSON.stringify(user));
-    }
+    public async get(request: IApiRequest, endpoint: IApiEndpointInfo, read: IRead, modify: IModify, http: IHttp,
+                     persis: IPersistence): Promise<IApiResponse> {
 
-    protected async handleRequest(request: IApiRequest, endpoint: IApiEndpointInfo, read: IRead, modify: IModify,
-                                  http: IHttp, persis: IPersistence): Promise<IApiResponse> {
-        if (!request.content.type) {
-            return this.success();
-        }
-        switch (request.content.type) {
-            default:
-                return this.failRequest(request);
+        if (request.query.code && request.query.state) {
+            const api = await SlackAPIClient.asyncConstruct(this.app);
+            await api.authorize(request.query.code, request.query.state, read, persis);
+            return this.success(JSON.stringify(await api.myInfo()));
+        } else {
+            return this.failRequest(request, 'Expected code & state');
         }
     }
 }
