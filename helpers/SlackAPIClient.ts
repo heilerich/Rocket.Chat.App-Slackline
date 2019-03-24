@@ -146,6 +146,7 @@ export class SlackAPIClient {
                 this.logError(endpoint, e);
             }
         }
+        return;
     }
 
     private async callApi(endpoint: string, params: any): Promise<any> {
@@ -171,6 +172,7 @@ export class SlackAPIClient {
                 this.logError(endpoint, e);
             }
         }
+        return;
     }
 
     private logError(endpoint: string, error: any) {

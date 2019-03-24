@@ -73,18 +73,18 @@ export class SlacklineCommand implements ISlashCommand {
         if (token) {
             if (matchingCommands.length > 0) {
                 return Promise.resolve({
-                    i18nTitle: 'slackline_command_description',
+                    i18nTitle: 'slackline_command_preview_prefix',
                     items: matchingCommands.map((cmd) => SlacklineCommand.previewItemForCommand(cmd)),
                 });
             } else {
                 return Promise.resolve({
-                    i18nTitle: 'slackline_command_description',
+                    i18nTitle: 'slackline_command_preview_prefix',
                     items: Object.keys(SlacklineSubCommand).map((key) => SlacklineCommand.previewItemForCommand(SlacklineSubCommand[key])),
                 });
             }
         } else {
             return Promise.resolve({
-                i18nTitle: 'slackline_command_description',
+                i18nTitle: 'slackline_command_preview_prefix',
                 items: [SlacklineCommand.previewItemForCommand(SlacklineSubCommand.LOGIN)],
             });
         }
