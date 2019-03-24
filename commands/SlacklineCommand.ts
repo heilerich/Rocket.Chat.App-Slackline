@@ -1,5 +1,6 @@
 import {IHttp, IMessageBuilder, IModify, IPersistence, IRead} from '@rocket.chat/apps-engine/definition/accessors';
 import {IMessageAction, MessageActionType} from '@rocket.chat/apps-engine/definition/messages';
+import {RoomType} from '@rocket.chat/apps-engine/definition/rooms';
 import {
     ISlashCommand,
     ISlashCommandPreview,
@@ -43,10 +44,12 @@ export class SlacklineCommand implements ISlashCommand {
     }
 
     public command = 'slackline';
+    // noinspection JSUnusedGlobalSymbols
     public i18nDescription = 'slackline_command_description';
+    // noinspection JSUnusedGlobalSymbols
     public i18nParamsExample = 'slackline_command_params';
+    // noinspection JSUnusedGlobalSymbols
     public providesPreview = true;
-    private commmand: any;
 
     constructor(private readonly app: SlacklineApp) {
     }
@@ -105,11 +108,11 @@ export class SlacklineCommand implements ISlashCommand {
             case SlacklineSubCommand.IMPORT:
                 return this.handleImport(context, read, modify, http, persis);
             case SlacklineSubCommand.LOGIN:
-                return this.handleLogin(context, read, modify, http, persis);
+                return this.handleLogin(context, read, modify, persis);
             case SlacklineSubCommand.ENABLE:
-                return this.handleEnable(context, read, modify, http, persis);
+                return this.handleEnable(context, read, modify, persis);
             case SlacklineSubCommand.DISABLE:
-                return this.handleDisable(context, read, modify, http, persis);
+                return this.handleDisable(context, read, modify, persis);
             case SlacklineSubCommand.LOGOUT:
                 return this.handleLogout(context, read, modify, persis);
         }
@@ -118,11 +121,11 @@ export class SlacklineCommand implements ISlashCommand {
 
     private async handleLogout(context: SlashCommandContext, read: IRead, modify: IModify, persis: IPersistence): Promise<void> {
         const storage = new SlacklineStorage(read, persis);
-        await storage.saveUserStorage(context.getSender(), {token: undefined});
+        await storage.saveUserStorage(context.getSender(), {token: undefined, enabled: false});
         return this.messageToSelf('Logged out', context, modify);
     }
 
-    private async handleLogin(context: SlashCommandContext, read: IRead, modify: IModify, http: IHttp, persis: IPersistence): Promise<void> {
+    private async handleLogin(context: SlashCommandContext, read: IRead, modify: IModify, persis: IPersistence): Promise<void> {
         const user = await context.getSender();
 
         const loginId = makeID(10);
@@ -152,28 +155,39 @@ export class SlacklineCommand implements ISlashCommand {
     }
 
     private async handleImport(context: SlashCommandContext, read: IRead, modify: IModify, http: IHttp, persis: IPersistence): Promise<void> {
-        const id = context.getArguments()[1];
-        const user = await new SlacklineStorage(read, persis).getUserForLoginId(id);
-
-        if (user) {
-            return this.messageToSelf(`user ${user.username}`, context, modify);
-        } else {
-            return this.messageToSelf(`not found`, context, modify);
+        // TODO: import history. Possibly ignoring already imported messages by user+timestamp?
+        const localRoom = context.getRoom();
+        const members = await read.getRoomReader().getMembers(localRoom.id);
+        await this.messageToSelf(JSON.stringify([localRoom, members]), context, modify);
+        switch (localRoom.type) {
+            case RoomType.DIRECT_MESSAGE:
+                return this.messageToSelf('This is a direct message', context, modify);
+            case RoomType.PRIVATE_GROUP:
+                return this.messageToSelf('This is a private group', context, modify);
+            default:
+                return this.messageToSelf('Only private channel and direct messages are supported.', context, modify);
         }
     }
 
-    private async handleEnable(context: SlashCommandContext, read: IRead, modify: IModify, http: IHttp, persis: IPersistence): Promise<void> {
-        const token = await new SlacklineStorage(read, persis).getToken(context.getSender());
-        return this.messageToSelf(`${token}`, context, modify);
+    private async handleEnable(context: SlashCommandContext, read: IRead, modify: IModify, persis: IPersistence): Promise<void> {
+        return this.setState(true, context, read, modify, persis);
     }
 
-    private async handleDisable(context: SlashCommandContext, read: IRead, modify: IModify, http: IHttp, persis: IPersistence): Promise<void> {
-        return Promise.resolve();
+    private async handleDisable(context: SlashCommandContext, read: IRead, modify: IModify, persis: IPersistence): Promise<void> {
+        return this.setState(false, context, read, modify, persis);
+    }
+
+    private async setState(state: boolean, context: SlashCommandContext, read: IRead, modify: IModify, persis: IPersistence): Promise<void> {
+        const storage = new SlacklineStorage(read, persis);
+        await storage.saveUserStorage(context.getSender(), {enabled: state});
+        const newState = (await storage.getUserStorage(context.getSender())).enabled ? 'enabled' : 'disabled';
+        return this.messageToSelf(`Slackline ${newState}.`, context, modify);
     }
 
     private async messageToSelf(msg: string, context: SlashCommandContext, modify: IModify): Promise<void> {
         const messageBuilder = await SlacklineCommand.getMessageToSelf(context, modify);
         await messageBuilder.setText(msg);
+        this.app.getLogger().debug(`Notify user ${msg}`);
         return await modify.getNotifier().notifyUser(await messageBuilder.getSender(), messageBuilder.getMessage());
     }
 }

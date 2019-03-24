@@ -62,10 +62,11 @@ export class SlackAPIClient {
         const channels: [ISlackChannel] = result.channels.map((channel): ISlackChannel => {
             return {
                 channelId: channel.id,
-                is_channel: channel.is_channel,
+                is_channel: channel.is_group,
                 is_im: channel.is_im,
                 is_mpim: channel.is_mpim,
                 otherUser: channel.user,
+                name: channel.name,
             };
         });
 
@@ -134,6 +135,8 @@ export class SlackAPIClient {
                 if (resultBody.access_token) {
                     this.token = resultBody.access_token;
                     await storage.saveUserStorage(user, { token: resultBody.access_token });
+                    const myInfo = await this.myInfo();
+                    await storage.setUserForSlackId(user, myInfo.userId);
                     return resultBody.access_token;
                 } else {
                     this.logError(endpoint, {
@@ -190,6 +193,7 @@ export interface ISlackChannel {
     channelId: string;
     otherUser?: string;
     userInfo?: Array<ISlackUserInfo> | ISlackUserInfo;
+    name?: string;
 
     is_im: boolean;
     is_channel: boolean;
