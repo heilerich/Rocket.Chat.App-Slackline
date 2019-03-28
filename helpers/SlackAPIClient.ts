@@ -10,9 +10,10 @@ export class SlackAPIClient {
         return new SlackAPIClient(app, clientID, cSecret, token);
     }
 
-    private clientID: string;
-    private cSecret: string;
+    private readonly clientID: string;
+    private readonly cSecret: string;
     private readonly app: SlacklineApp;
+    private apiCache: Array<IApiCache> = Array<IApiCache>();
 
     private logger: ILogger;
     private http: IHttp;
@@ -167,6 +168,8 @@ export class SlackAPIClient {
     }
 
     private async callApi(endpoint: string, params: any): Promise<any> {
+        const cachedResponse = this.apiCache.find((item) => item.endpoint === endpoint && item.params === params);
+        if (cachedResponse) {return Promise.resolve(cachedResponse.response); }
         const requestParams = Object.assign(params, {token: this.token});
         const options: IHttpRequest = {
             params: requestParams,
@@ -177,6 +180,7 @@ export class SlackAPIClient {
             try {
                 const resultBody = JSON.parse(result.content);
                 if (resultBody.ok) {
+                    this.apiCache.push({endpoint, params, response: resultBody});
                     return resultBody;
                 } else {
                     this.logError(endpoint, {
@@ -223,4 +227,10 @@ export interface ISlackMessage {
     slackId: string;
     user?: string;
     text?: string;
+}
+
+interface IApiCache {
+    endpoint: string;
+    params: any;
+    response: any;
 }
