@@ -97,7 +97,7 @@ export class SlackAPIClient {
     public async fullChannelHistory(channelId: string, nextCursor?: string): Promise<Array<ISlackMessage>> {
         let params = {
             channel: channelId,
-            limit: 100,
+            limit: 500,
         };
         if (nextCursor) { params = Object.assign(params, {cursor: nextCursor}); }
         const result = await this.callApi('conversations.history', params);
