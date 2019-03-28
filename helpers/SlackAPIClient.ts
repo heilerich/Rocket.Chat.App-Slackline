@@ -82,6 +82,17 @@ export class SlackAPIClient {
         }));
     }
 
+    public async allWorkspaceUsers(): Promise<Array<ISlackUserInfo>> {
+        const result = await this.callApi('users.list', {});
+        return result.members.map((user): ISlackUserInfo => {
+            return {
+                userId: user.id,
+                name: user.name,
+                displayName: user.real_name,
+            };
+        });
+    }
+
     public async fullChannelHistory(channelId: string, nextCursor?: string): Promise<Array<ISlackMessage>> {
         let params = {
             channel: channelId,
@@ -97,6 +108,7 @@ export class SlackAPIClient {
                    ts: message.ts,
                    user: message.user,
                    text: message.text,
+                   slackId: message.client_msg_id,
                };
             });
 
@@ -208,6 +220,7 @@ export interface ISlackMessage {
     type: string;
     ts: string;
 
+    slackId: string;
     user?: string;
     text?: string;
 }

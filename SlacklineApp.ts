@@ -1,16 +1,17 @@
 import {
     IAppAccessors, IConfigurationExtend, IConfigurationModify, IEnvironmentRead, IHttp,
-    ILogger, IRead, ISettingRead,
+    ILogger, IMessageBuilder, IPersistence, IRead, ISettingRead,
 } from '@rocket.chat/apps-engine/definition/accessors';
 import {IApiEndpointMetadata} from '@rocket.chat/apps-engine/definition/api';
 import { App } from '@rocket.chat/apps-engine/definition/App';
+import {IMessage, IPreMessageSentModify} from '@rocket.chat/apps-engine/definition/messages';
 import { IAppInfo } from '@rocket.chat/apps-engine/definition/metadata';
 import {ISetting, SettingType} from '@rocket.chat/apps-engine/definition/settings';
 import {SlacklineAPI} from './Api';
 import {SlacklineCommand} from './commands/SlacklineCommand';
 import {OauthEndpoint} from './endpoints/oauth';
 
-export class SlacklineApp extends App {
+export class SlacklineApp extends App implements IPreMessageSentModify {
     constructor(info: IAppInfo, logger: ILogger, accessors: IAppAccessors) {
         super(info, logger, accessors);
     }
@@ -57,6 +58,17 @@ export class SlacklineApp extends App {
         const oauthEndpoint = endpoints.find((endpoint) => endpoint.path === endpointPath) as IApiEndpointMetadata;
         const baseUrl = await this.getAccessors().environmentReader.getEnvironmentVariables().getValueByName('ROOT_URL');
         return baseUrl + oauthEndpoint.computedPath;
+    }
+
+    public async executePreMessageSentModify(message: IMessage, builder: IMessageBuilder, read: IRead, http: IHttp,
+                                             persistence: IPersistence): Promise<IMessage> {
+        const createdDate = message.customFields ? message.customFields.importTs : undefined;
+        if (createdDate) {
+            const msg = builder.getMessage();
+            msg.createdAt = new Date(Date.parse(createdDate));
+            builder.setData(msg);
+        }
+        return await builder.getMessage();
     }
 
     private async checkConfigured(read: ISettingRead, configurationModify: IConfigurationModify): Promise<void> {
