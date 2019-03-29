@@ -163,7 +163,6 @@ export class SlacklineCommand implements ISlashCommand {
         const user = context.getSender();
         const userInfo = await storage.getUserStorage(user);
         const room = context.getRoom();
-        // TODO: import history. Possibly ignoring already imported messages by user+timestamp?
 
         const api = await SlackAPIClient.asyncConstruct(this.app, userInfo.token);
 
@@ -183,6 +182,18 @@ export class SlacklineCommand implements ISlashCommand {
         if (!slackChannel) {
             return this.messageToSelf(`Couldn't find this direct message channel on slack`, context, modify);
         }
+        return await this.importChannel(slackChannel, read, room, context, modify, api);
+    }
+
+    private async handlePrivateGroupImport(read: IRead, room: IRoom, context: SlashCommandContext, modify: IModify, api: SlackAPIClient): Promise<void> {
+        const slackChannel = await this.getSlackPrivateChannel(room, api);
+        if (!slackChannel) {
+            return this.messageToSelf(`Could not find channel with name ${room.displayName} on slack`, context, modify);
+        }
+        return await this.importChannel(slackChannel, read, room, context, modify, api);
+    }
+
+    private async importChannel(slackChannel: ISlackChannel, read: IRead, room: IRoom, context: SlashCommandContext, modify: IModify, api: SlackAPIClient) {
         const messageHistory = await api.fullChannelHistory(slackChannel.channelId);
         const allSlackUsers = await api.allWorkspaceUsers();
         const localMessages: Array<IMessage> = Array<IMessage>(); // TODO: await read.getRoomReader().getMessages(room.id); not implemented yet
@@ -218,16 +229,6 @@ export class SlacklineCommand implements ISlashCommand {
         }));
 
         return this.messageToSelf(`Processed ${processed.length} messages. Ignored ${nIgnored}.`, context, modify);
-    }
-
-    private async handlePrivateGroupImport(read: IRead, room: IRoom, context: SlashCommandContext, modify: IModify, api: SlackAPIClient): Promise<void> {
-        const slackChannel = await this.getSlackPrivateChannel(room, api);
-        if (!slackChannel) {
-            return this.messageToSelf(`Could not find channel with name ${room.displayName} on slack`, context, modify);
-        }
-        const messages = read.getRoomReader().getMessages(room.id);
-        await this.app.getLogger().debug(messages);
-        return this.messageToSelf(`This is a private group ${slackChannel.channelId}`, context, modify);
     }
 
     private async postMessageToRoom(message: ISlackMessage, createdDate: Date, sender: IUser, room: IRoom, modify: IModify): Promise<void> {

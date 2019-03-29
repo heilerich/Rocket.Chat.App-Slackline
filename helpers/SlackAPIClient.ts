@@ -103,7 +103,8 @@ export class SlackAPIClient {
         const result = await this.callApi('conversations.history', params);
 
         if (result.messages instanceof Array) {
-            let messages: Array<ISlackMessage> = result.messages.map( (message) => {
+            const filteredMessages = result.messages.filter((message) => message.subtype !== 'group_join');
+            let messages: Array<ISlackMessage> = filteredMessages.map( (message) => {
                return {
                    type: message.type,
                    ts: message.ts,
